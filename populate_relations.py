@@ -1,25 +1,26 @@
 from __future__ import print_function
-from bs4 import BeautifulSoup
 from collections import defaultdict
-import db_adaptor as dba
-from xml_tags import XmlTags as xt
+from bs4 import BeautifulSoup
+from xml_tags import Tags as xt
 
-POPULARITY_FILENAME, POPULARITIES_DICT ='wiki09_count09_xml.csv', {}
+POPULARITY_FILENAME, POPULARITIES_DICT = 'wiki09_count09_xml.csv', {}
 
-def convert_to_sql_text(txt, truncate_size = -1):
-    if txt == None:
+def convert_to_sql_text (txt, truncate_size = -1):
+    if txt == None or txt.strip() == '':
         return '\'\''
-    txt =  txt.strip().replace('\'','\'\'').replace('\"','\'\'').replace('\n',' ')
+    txt =  txt.strip().replace('\'','\'\'').replace('\"','\'\'').replace('\n',' ').replace('\\\'', '\'')
     if truncate_size > 0 and len(txt) > truncate_size-2:
         txt = txt[:truncate_size-2]
-    return u'\'' + txt + '\''
+    if txt[-1] == '\\':
+        txt[-1] = '/'
+    return u'\'' + txt + '\''    
 
 def extract_images(soup, popularity):    
     images = []
     image_set = set()
     for img in soup.find_all(xt.IMAGE):
         src = img.get(xt.SRC)
-        if src == None:
+        if src == None or src.strip()== '':
             continue
         img_src = convert_to_sql_text(src,255)        
         if img_src not in image_set:
@@ -50,57 +51,53 @@ def extract_links(soup, popularity):
             link_set.add(web_link)
     return links
 
-def populate_db(db, soup):    
+def populate_db(db, soup):
     artic_id = soup.find(xt.HEADER).find(xt.ID).get_text(strip=True)
     if artic_id == None:
-        return True
-    artic_text = '\'TE\'\'X\'\'T\''
-    # artic_text = convert_to_sql_text(soup.get_text())
-    # artic_text = '\'' + artic_text.replace('\'','\'\'').replace('\"','\'\'').replace('\n',' ') + '\''    
+        return True    
+
+    artic_text = convert_to_sql_text(soup.get_text())
+    artic_text = '\'' + artic_text.replace('\'','\'\'').replace('\"','\'\'').replace('\n',' ') + '\''
     artic_popularity = int(POPULARITIES_DICT[artic_id])
     db.insert_articles([{xt.ID:artic_id, xt.TEXT:artic_text, xt.POPULARITY:artic_popularity}])
 
     artic_image_dict_list = extract_images(soup, artic_popularity)
-    db.insert_images(artic_image_dict_list)    
-    
+    db.insert_images(artic_image_dict_list)
+    db.insert_article_image(artic_id, artic_popularity, artic_image_dict_list) 
+
     artic_links_dict_list = extract_links(soup, artic_popularity)
-    db.insert_links(artic_links_dict_list)
+    db.insert_links(artic_links_dict_list)        
+    db.insert_article_link(artic_id, artic_popularity, artic_links_dict_list)
 
-    # art_img_id_dict_list = []
-    # for img_id in image_ids:
-    #     art_img_id_dict_list += [{xt.ARTICLE_ID:artic_id, xt.IMAGE_ID:img_id, xt.POPULARITY:artic_popularity}]
-    # db.insert_article_image(art_img_id_dict_list)
-
-    # art_lnk_id_dict_list = []
-    # for lnk_id in link_ids:
-    #     art_lnk_id_dict_list += [{xt.ARTICLE_ID:artic_id, xt.LINK_ID:lnk_id, xt.POPULARITY:artic_popularity}]
-    # db.insert_article_link(art_lnk_id_dict_list)
     return False
 
 import os
-def parse_direcotry(db, rootname, replace_strs=REPLACE):
+def parse_direcotry(db, rootname):
     bad_files = []
     count_files = 0
     for root, dirs, files in os.walk(rootname):                            
         for f in files:
             xmlfilename = root+'/'+f
             count_files += 1
-            print ('\rsuccess-rate:{:.4f}\t{}.scanning {}...'.format(len(bad_files)/float(count_files), count_files,
+            print ('\rfailure-rate:{:.5f}\t{}| Scanning {}...'.format(len(bad_files)/float(count_files), count_files,
                 os.path.abspath(xmlfilename)), end='')            
             filestr = ''
-            with open(xmlfilename, 'r') as fr:                
-                filestr = fr.read() 
+            with open(xmlfilename, 'r') as f:                
+                filestr = f.read() 
 
             try:                
                 soup = BeautifulSoup(filestr, 'lxml')
                 populate_db(db, soup)
             except Exception as e:
-                raise e              
-                bad_files += [os.path.abspath(xmlfilename)]            
-
-    print ('\nunsuccessful tries:\n', '\n'.join(bad_files))
+                bad_files += [os.path.abspath(xmlfilename)]
+                # raise e                              
+    bd_str = '\n'.join(bad_files)
+    print ('\nunsuccessful tries:\n', bd_str)
+    with open('failure_log.txt','w') as f:
+        f.write(bd_str)
 
 def get_popularities(filename):
+    print ('Reading popularities from {}...'.format(filename))
     pop_dict = defaultdict(int)
     with open(filename, 'r') as fr:
         for l in fr:
@@ -117,10 +114,33 @@ if __name__ == '__main__':
     rootname = './xml'
     if len(sys.argv) > 1:
             rootname = sys.argv[1]
-    # user_name = raw_input('username: ')
-    # pass_word = getpass.getpass()
-    # db = DatabaseAdaptor(username = user_name, password=pass_word)
-    db = DatabaseAdaptor()
+    hostname = raw_input('host: ')
+    db_name = raw_input('database name: ')
+    username = raw_input('username: ')
+    password = getpass.getpass()
+    socket = raw_input('socket (if nothing press enter): ')
+    creditentials = {}
+    
+    if os.path.exists('credentials.txt'):
+        with open('credentials.txt', 'r') as f:
+            cred = f.readlines()
+    creditentials['username'] = cred[0].strip()
+    creditentials['password'] = cred[1].strip()
+    creditentials['hostname'] = cred[2].strip()
+    creditentials['db_name'] = cred[3].strip()
+    creditentials['socket'] = cred[4].strip()
+    
+    if hostname != '':
+        creditentials['hostname'] = hostname
+    if db_name != '':
+        creditentials['db_name'] = db_name
+    if username != '':
+        creditentials['username'] = username
+    if password != '':
+        creditentials['password'] = password
+    if socket != '':
+        creditentials['socket'] = socket
+
+    db = DatabaseAdaptor(**creditentials)    
     POPULARITIES_DICT = get_popularities(POPULARITY_FILENAME)
     parse_direcotry(db, rootname)
-    
