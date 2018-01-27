@@ -17,7 +17,7 @@ class DatabaseAdaptor(object):
                          unix_socket = socket,
                          charset='utf8')
             
-            self.__drop_all_tables()            
+            # self.__drop_all_tables()
             self.__create_tables()
         except Exception as e:            
             print 'Database connection failed!'
@@ -52,12 +52,13 @@ class DatabaseAdaptor(object):
     def insert_articles(self, list_attrib_value):
         sql_script_list = []
         for att_val in list_attrib_value:
-            sql_script = u'''INSERT INTO {0} ({1}, {3}, {5}) VALUES ({2}, {4}, {6})
+            sql_script = u'''INSERT INTO {0} ({1}, {3}, {5}, {7}) VALUES ({2}, {4}, {6}, {8})
                             ON DUPLICATE KEY UPDATE {5} = {5}+{6};'''\
                                             .format(xt.tbl_article,
                                             xt.ID, att_val[xt.ID],
                                             xt.TEXT, att_val[xt.TEXT],
-                                            xt.POPULARITY, att_val[xt.POPULARITY])
+                                            xt.POPULARITY, att_val[xt.POPULARITY],
+                                            xt.TITLE, att_val[xt.TITLE])
             sql_script_list += [sql_script]
         return self.execute_sql(sql_script_list)    
 
@@ -130,8 +131,8 @@ class DatabaseAdaptor(object):
             return
 
         sql_list = []
-        sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{txt} MEDIUMTEXT,{pop} INTEGER) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
-                                        .format(t=xt.tbl_article, id=xt.ID, txt=xt.TEXT, pop=xt.POPULARITY)]
+        sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{ttl} TEXT,{txt} MEDIUMTEXT,{pop} INTEGER) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
+                                        .format(t=xt.tbl_article, id=xt.ID, txt=xt.TEXT, pop=xt.POPULARITY, ttl=xt.TITLE)]
         sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{xref} VARCHAR(255) NOT NULL UNIQUE,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
                                         .format(t=xt.tbl_link, id=xt.ID, xref=xt.XLINK_HREF.replace(':','_'), pop=xt.POPULARITY)]
         sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{src} VARCHAR(255) NOT NULL UNIQUE,{cap} TEXT,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;\n'\

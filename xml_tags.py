@@ -3,7 +3,7 @@ class Tags(object):
     IMAGE, SRC, CAPTION = 'image', 'src', 'caption'
     LINK, WEBLINK, XLINK_HREF = 'link', 'weblink', 'xlink:href'
     POPULARITY = 'popularity'
-    ID, TEXT, HEADER = 'id', 'text', 'header'
+    ID, TEXT, HEADER, TITLE = 'id', 'text', 'header', 'title'
     ARTICLE_ID, LINK_ID, IMAGE_ID = 'article_id', 'link_id', 'image_id'
     
     tbl_article = 'tbl_article'

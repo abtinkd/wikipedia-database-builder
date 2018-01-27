@@ -6,7 +6,7 @@ from xml_tags import Tags as xt
 POPULARITY_FILENAME, POPULARITIES_DICT = 'wiki09_count09_xml.csv', {}
 
 def convert_to_sql_text (txt, truncate_size = -1):
-    if txt == None or txt.strip() == '':
+    if txt == None or txt == '':
         return '\'\''
     txt =  txt.strip().replace('\'','\'\'').replace('\"','\'\'').replace('\n',' ').replace('\\\'', '\'')
     if truncate_size > 0 and len(txt) > truncate_size-2:
@@ -53,13 +53,13 @@ def extract_links(soup, popularity):
 
 def populate_db(db, soup):
     artic_id = soup.find(xt.HEADER).find(xt.ID).get_text(strip=True)
-    if artic_id == None:
-        return True    
+    if artic_id == None or artic_id == '':
+        return
 
-    artic_text = convert_to_sql_text(soup.get_text())
-    artic_text = '\'' + artic_text.replace('\'','\'\'').replace('\"','\'\'').replace('\n',' ') + '\''
+    artic_text = convert_to_sql_text(soup.get_text())     
+    artic_title = convert_to_sql_text(soup.find(xt.TITLE).get_text())
     artic_popularity = int(POPULARITIES_DICT[artic_id])
-    db.insert_articles([{xt.ID:artic_id, xt.TEXT:artic_text, xt.POPULARITY:artic_popularity}])
+    db.insert_articles([{xt.ID:artic_id, xt.TEXT:artic_text, xt.POPULARITY:artic_popularity, xt.TITLE:artic_title}])
 
     artic_image_dict_list = extract_images(soup, artic_popularity)
     db.insert_images(artic_image_dict_list)
@@ -68,8 +68,6 @@ def populate_db(db, soup):
     artic_links_dict_list = extract_links(soup, artic_popularity)
     db.insert_links(artic_links_dict_list)        
     db.insert_article_link(artic_id, artic_popularity, artic_links_dict_list)
-
-    return False
 
 import os
 def parse_direcotry(db, rootname):
@@ -84,10 +82,9 @@ def parse_direcotry(db, rootname):
             filestr = ''
             with open(xmlfilename, 'r') as f:                
                 filestr = f.read() 
-
             try:                
                 soup = BeautifulSoup(filestr, 'lxml')
-                populate_db(db, soup)
+                populate_db(db, soup)                
             except Exception as e:
                 bad_files += [os.path.abspath(xmlfilename)]
                 # raise e                              
