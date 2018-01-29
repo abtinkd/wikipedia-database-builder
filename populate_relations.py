@@ -38,7 +38,9 @@ def extract_links(soup, popularity):
         wiki_relative_link = lk.get(xt.XLINK_HREF)
         if wiki_relative_link == None:
             continue
-        wiki_link = '//wikipedia.org/' + wiki_relative_link.strip().rsplit('/',1)[1]
+        if wiki_relative_link.find('/') != -1:
+            wiki_relative_link = wiki_relative_link.strip().rsplit('/',1)[1]
+        wiki_link = '//wikipedia.org/' + wiki_relative_link
         wiki_link = convert_to_sql_text(wiki_link,255)
         if wiki_link not in link_set:
             links += [{xt.XLINK_HREF:wiki_link, xt.POPULARITY:popularity}]
@@ -105,14 +107,13 @@ def parse_direcotry(db, rootname):
                 filestr = f.read()
             try:                
                 soup = BeautifulSoup(filestr, 'lxml')
-                
+                populate_db(db, soup)
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
                 bad_files += [abs_filename]
                 with open('failure_log.txt','a') as f:
                     f.write(abs_filename+'\n')
-                # raise e                              
-            populate_db(db, soup)                
+                # raise e                                          
     bd_str = '\n'.join(bad_files)
     print ('\nunsuccessful tries:\n{}'.format(bd_str))    
 
