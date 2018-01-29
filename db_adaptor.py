@@ -16,8 +16,7 @@ class DatabaseAdaptor(object):
                          db=db_name,
                          unix_socket = socket,
                          charset='utf8')
-            
-            # self.__drop_all_tables()
+                                 
             self.__create_tables()
         except Exception as e:            
             print 'Database connection failed!'
@@ -34,7 +33,12 @@ class DatabaseAdaptor(object):
         'DROP TABLE IF EXISTS tbl_article;']
         return self.execute_sql(sql_script_list)
 
-        
+    def get_imported_article_ids(self):
+        sql_script = u'SELECT DISTINCT {id} FROM {tbl};'.format(id=xt.ID, tbl=xt.tbl_article)
+        _, res = self.execute_sql([sql_script])        
+        ids = [int(o[0]) for o in res[0]]
+        return ids
+
     def execute_sql(self, sql_script_list):        
         cursor = self.__db.cursor()        
         count, output = 0L, []

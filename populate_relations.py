@@ -5,14 +5,16 @@ from xml_tags import Tags as xt
 
 POPULARITY_FILENAME, POPULARITIES_DICT = 'wiki09_count09_xml.csv', {}
 
-def convert_to_sql_text (txt, truncate_size = -1):
+
+
+def convert_to_sql_text (txt, truncate_size = -1): 
     if txt == None or txt == '':
         return '\'\''
     txt =  txt.strip().replace('\'','\'\'').replace('\"','\'\'').replace('\n',' ').replace('\\\'', '\'')
     if truncate_size > 0 and len(txt) > truncate_size-2:
         txt = txt[:truncate_size-2]
     if txt[-1] == '\\':
-        txt[-1] = '/'
+        txt = txt[:-1]+'/'
     return u'\'' + txt + '\''    
 
 def extract_images(soup, popularity):    
@@ -69,27 +71,47 @@ def populate_db(db, soup):
     db.insert_links(artic_links_dict_list)        
     db.insert_article_link(artic_id, artic_popularity, artic_links_dict_list)
 
+import re
+def get_article_id_from_file_name(filename):
+    # print(filename, re.sub('[^0-9]', '', filename))
+    n = re.sub('[^0-9]', '', filename)
+    if n != '' and n != None:
+        return int(n)
+    else:
+        return -1
+
+
 import os
 def parse_direcotry(db, rootname):
+    im_ids = db.get_imported_article_ids()
     bad_files = []
     count_files = 0
     for root, dirs, files in os.walk(rootname):                            
         for f in files:
             xmlfilename = root+'/'+f
+            print ('\rfailure-rate:{:.5f}\t{}| {}...'.format(len(bad_files)/float(count_files+1), count_files,
+                os.path.abspath(xmlfilename)), end='')
+
+            aid = get_article_id_from_file_name(f)
+            if aid == -1:
+                bad_files += [os.path.abspath(xmlfilename)]
+                continue
+            if aid in im_ids:
+                continue            
             count_files += 1
-            print ('\rfailure-rate:{:.5f}\t{}| Scanning {}...'.format(len(bad_files)/float(count_files), count_files,
-                os.path.abspath(xmlfilename)), end='')            
+
             filestr = ''
             with open(xmlfilename, 'r') as f:                
-                filestr = f.read() 
+                filestr = f.read()
             try:                
                 soup = BeautifulSoup(filestr, 'lxml')
-                populate_db(db, soup)                
+                
             except Exception as e:
                 bad_files += [os.path.abspath(xmlfilename)]
                 # raise e                              
+            populate_db(db, soup)                
     bd_str = '\n'.join(bad_files)
-    print ('\nunsuccessful tries:\n', bd_str)
+    print ('\nunsuccessful tries:\n{}'.format(bd_str))
     with open('failure_log.txt','w') as f:
         f.write(bd_str)
 
