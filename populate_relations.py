@@ -107,13 +107,14 @@ def parse_direcotry(db, rootname):
                 soup = BeautifulSoup(filestr, 'lxml')
                 
             except Exception as e:
-                bad_files += [os.path.abspath(xmlfilename)]
+                abs_filename = os.path.abspath(xmlfilename)
+                bad_files += [abs_filename]
+                with open('failure_log.txt','a') as f:
+                    f.write(abs_filename+'\n')
                 # raise e                              
             populate_db(db, soup)                
     bd_str = '\n'.join(bad_files)
-    print ('\nunsuccessful tries:\n{}'.format(bd_str))
-    with open('failure_log.txt','w') as f:
-        f.write(bd_str)
+    print ('\nunsuccessful tries:\n{}'.format(bd_str))    
 
 def get_popularities(filename):
     print ('Reading popularities from {}...'.format(filename))
