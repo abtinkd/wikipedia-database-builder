@@ -40,7 +40,7 @@ def extract_links(soup, popularity):
             continue
         if wiki_relative_link.find('/') != -1:
             wiki_relative_link = wiki_relative_link.strip().rsplit('/',1)[1]
-        wiki_link = '//wikipedia.org/' + wiki_relative_link
+        wiki_link = wiki_relative_link.split('.')[0]
         wiki_link = convert_to_sql_text(wiki_link,255)
         if wiki_link not in link_set:
             links += [{xt.XLINK_HREF:wiki_link, xt.POPULARITY:popularity}]
