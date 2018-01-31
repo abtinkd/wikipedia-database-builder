@@ -16,6 +16,7 @@ class DatabaseAdaptor(object):
                          db=db_name,
                          unix_socket = socket,
                          charset='utf8')                    
+            self.__drop_all_tables()
             self.__create_tables()
         except Exception as e:            
             print 'Database connection failed!'
@@ -25,11 +26,11 @@ class DatabaseAdaptor(object):
 
     def __drop_all_tables(self):
         sql_script_list = [\
-        'DROP TABLE IF EXISTS tbl_article_link;',
-        'DROP TABLE IF EXISTS tbl_article_image;',
-        'DROP TABLE IF EXISTS tbl_image;',
-        'DROP TABLE IF EXISTS tbl_link;',
-        'DROP TABLE IF EXISTS tbl_article;']
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_article_link),
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_article_image),
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_image),
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_link),
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_article)]
         return self.execute_sql(sql_script_list)
 
     def get_imported_article_ids(self):
