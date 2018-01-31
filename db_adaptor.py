@@ -15,7 +15,7 @@ class DatabaseAdaptor(object):
                          passwd=password,
                          db=db_name,
                          unix_socket = socket,
-                         charset='utf8')        
+                         charset='utf8')                    
             self.__create_tables()
         except Exception as e:            
             print 'Database connection failed!'
@@ -48,7 +48,7 @@ class DatabaseAdaptor(object):
             except Exception as e:                
                 print '\nSQL SCRIPT:\n{}\n!!!!!!!!!!!!!!!!!!!!!'.format(sql_script)
                 raise e
-        self.__db.commit()                        
+        self.__db.commit()
         cursor.close()
         return count, output
 

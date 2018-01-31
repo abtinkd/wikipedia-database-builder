@@ -84,14 +84,21 @@ def get_article_id_from_file_name(filename):
 
 
 import os
+import time
 def parse_direcotry(db, rootname):
     im_ids = db.get_imported_article_ids()
     bad_files = []
-    count_files = 0
-    for root, dirs, files in os.walk(rootname):                            
+    count = [0,0]
+    tm = time.time()
+    speed = 1
+    for root, dirs, files in os.walk(rootname):
         for f in files:
+            count[0] += 1
+            if count[0]%1000 == 0:
+                speed = (time.time()-tm)/1000.0
+                tm = time.time()
             xmlfilename = root+'/'+f
-            print ('\rfailure-rate:{:.5f}\t{}| {}...'.format(len(bad_files)/float(count_files+1), count_files,
+            print ('\rfailure-rate:{:.5f}     {} | {:.5f}(s) | {}...      '.format(len(bad_files)/float(count[1]+1), count, speed,
                 os.path.abspath(xmlfilename)), end='')
 
             aid = get_article_id_from_file_name(f)
@@ -99,8 +106,7 @@ def parse_direcotry(db, rootname):
                 bad_files += [os.path.abspath(xmlfilename)]
                 continue
             if aid in im_ids:
-                continue            
-            count_files += 1
+                continue                        
 
             filestr = ''
             with open(xmlfilename, 'r') as f:                
@@ -108,6 +114,7 @@ def parse_direcotry(db, rootname):
             try:                
                 soup = BeautifulSoup(filestr, 'lxml')
                 populate_db(db, soup)
+                count[1] +=1
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
                 bad_files += [abs_filename]
