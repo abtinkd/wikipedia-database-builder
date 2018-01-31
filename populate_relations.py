@@ -169,6 +169,6 @@ if __name__ == '__main__':
     if socket != '':
         creditentials['socket'] = socket
 
-    db = DatabaseAdaptor(**creditentials)    
+    db = DatabaseAdaptor(**creditentials)  
     POPULARITIES_DICT = get_popularities(POPULARITY_FILENAME)
     parse_direcotry(db, rootname)
