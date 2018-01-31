@@ -74,8 +74,7 @@ def populate_db(db, soup):
     db.insert_article_link(artic_id, artic_popularity, artic_links_dict_list)
 
 import re
-def get_article_id_from_file_name(filename):
-    # print(filename, re.sub('[^0-9]', '', filename))
+def get_article_id_from_file_name(filename):    
     n = re.sub('[^0-9]', '', filename)
     if n != '' and n != None:
         return int(n)
@@ -86,7 +85,6 @@ def get_article_id_from_file_name(filename):
 import os
 import time
 def parse_direcotry(db, rootname):
-    im_ids = db.get_imported_article_ids()
     bad_files = []
     count = [0,0]
     tm = time.time()
@@ -105,7 +103,7 @@ def parse_direcotry(db, rootname):
             if aid == -1:
                 bad_files += [os.path.abspath(xmlfilename)]
                 continue
-            if aid in im_ids:
+            if aid in db.id_article_list:
                 continue                        
 
             filestr = ''
@@ -113,14 +111,15 @@ def parse_direcotry(db, rootname):
                 filestr = f.read()
             try:                
                 soup = BeautifulSoup(filestr, 'lxml')
-                populate_db(db, soup)
+                
                 count[1] +=1
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
                 bad_files += [abs_filename]
                 with open('failure_log.txt','a') as f:
                     f.write(abs_filename+'\n')
-                # raise e                                          
+                # raise e
+            populate_db(db, soup)
     bd_str = '\n'.join(bad_files)
     print ('\nunsuccessful tries:\n{}'.format(bd_str))    
 

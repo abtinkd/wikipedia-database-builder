@@ -16,7 +16,11 @@ class DatabaseAdaptor(object):
                          db=db_name,
                          unix_socket = socket,
                          charset='utf8')                    
+            self.__drop_all_tables()
             self.__create_tables()
+            self.id_article_list = self.__get_existed_article_ids()
+            self.link_id_dict = self.__get_all_links_dict()
+            self.image_id_dict = self.__get_all_images_dict()
         except Exception as e:            
             print 'Database connection failed!'
             raise e        
@@ -25,18 +29,30 @@ class DatabaseAdaptor(object):
 
     def __drop_all_tables(self):
         sql_script_list = [\
-        'DROP TABLE IF EXISTS tbl_article_link;',
-        'DROP TABLE IF EXISTS tbl_article_image;',
-        'DROP TABLE IF EXISTS tbl_image;',
-        'DROP TABLE IF EXISTS tbl_link;',
-        'DROP TABLE IF EXISTS tbl_article;']
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_article_link),
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_article_image),
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_image),
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_link),
+        'DROP TABLE IF EXISTS {};'.format(xt.tbl_article)]
         return self.execute_sql(sql_script_list)
 
-    def get_imported_article_ids(self):
+    def __get_existed_article_ids(self):
         sql_script = u'SELECT DISTINCT {id} FROM {tbl};'.format(id=xt.ID, tbl=xt.tbl_article)
         _, res = self.execute_sql([sql_script])        
         ids = [int(o[0]) for o in res[0]]
         return ids
+    
+    def __get_all_links_dict(self):
+        sql_script = u'SELECT {id}, {lnk} FROM {tbl}'.format(id=xt.ID, lnk=xt.XLINK_HREF.replace(':','_'), tbl=xt.tbl_link)
+        _, res = self.execute_sql([sql_script])
+        mp = {o[0]:o[1] for o in res[0]}
+        return mp
+
+    def __get_all_images_dict(self):
+        sql_script = u'SELECT {id}, {src} FROM {tbl}'.format(id=xt.ID, src=xt.SRC, tbl=xt.tbl_image)
+        _, res = self.execute_sql([sql_script])
+        mp = {o[0]:o[1] for o in res[0]}
+        return mp
 
     def execute_sql(self, sql_script_list):        
         cursor = self.__db.cursor()        
@@ -46,7 +62,7 @@ class DatabaseAdaptor(object):
                 count += cursor.execute(sql_script)
                 output += [cursor.fetchall()]                
             except Exception as e:                
-                print '\nSQL SCRIPT:\n{}\n!!!!!!!!!!!!!!!!!!!!!'.format(sql_script)
+                print '\nSQL SCRIPT:\n{}\n!!!!!!!!!!!!!!!!!!!!!\n'.format(sql_script)
                 raise e
         self.__db.commit()
         cursor.close()
@@ -68,58 +84,66 @@ class DatabaseAdaptor(object):
     def insert_images(self, list_attrib_value):
         sql_script_list = []
         for att_val in list_attrib_value:
-            sql_script = u'''INSERT INTO {0} ({1}, {3}, {5}) VALUES ({2}, {4}, {6})
-                            ON DUPLICATE KEY UPDATE {5} = {5}+{6};'''\
-                                            .format(xt.tbl_image,
-                                            xt.SRC, att_val[xt.SRC],
-                                            xt.CAPTION, att_val[xt.CAPTION],
-                                            xt.POPULARITY, att_val[xt.POPULARITY])
+            img_src, img_id = att_val[xt.SRC], -1
+            if self.image_id_dict.has_key(img_src):
+                img_id = self.image_id_dict[img_src]
+            else:
+                img_id = len(self.image_id_dict)
+                self.image_id_dict[img_src] = img_id
+            sql_script = u'''INSERT INTO {tbl} ({id}, {src}, {cap}, {pop}) VALUES ({id_v}, {src_v}, {cap_v}, {pop_v})
+                            ON DUPLICATE KEY UPDATE {pop} = {pop}+{pop_v};'''\
+                                            .format(tbl=xt.tbl_image,
+                                            id=xt.ID, id_v=img_id,
+                                            src=xt.SRC, src_v=img_src,
+                                            cap=xt.CAPTION, cap_v=att_val[xt.CAPTION],
+                                            pop=xt.POPULARITY, pop_v=att_val[xt.POPULARITY])
             sql_script_list += [sql_script]
         return self.execute_sql(sql_script_list)
 
     def insert_links(self, list_attrib_value):        
         sql_script_list = []
         for att_val in list_attrib_value:
-            sql_script = u'''INSERT INTO {0} ({1}, {3}) VALUES ({2}, {4})
-                            ON DUPLICATE KEY UPDATE {3} = {3}+{4};'''\
-                                            .format(xt.tbl_link,
-                                            xt.XLINK_HREF.replace(':','_'), att_val[xt.XLINK_HREF],
-                                            xt.POPULARITY, att_val[xt.POPULARITY])
+            lnk_xref, lnk_id = att_val[xt.XLINK_HREF], -1
+            if self.link_id_dict.has_key(lnk_xref):
+                lnk_id = self.link_id_dict[lnk_xref]
+            else:
+                lnk_id = len(self.link_id_dict)
+                self.link_id_dict[lnk_xref] = lnk_id
+            sql_script = u'''INSERT INTO {tbl} ({id}, {xlk}, {pop}) VALUES ({id_v}, {xlk_v}, {pop_v})
+                            ON DUPLICATE KEY UPDATE {pop} = {pop}+{pop_v};'''\
+                                            .format(tbl=xt.tbl_link,
+                                            id=xt.ID, id_v=lnk_id,
+                                            xlk=xt.XLINK_HREF.replace(':','_'), xlk_v=lnk_xref,
+                                            pop=xt.POPULARITY, pop_v=att_val[xt.POPULARITY])
             sql_script_list += [sql_script]
         return self.execute_sql(sql_script_list)
     
     def insert_article_link(self, article_id, popularity, lnk_attrib_value_list):    
         href_list = [lnk[xt.XLINK_HREF] for lnk in lnk_attrib_value_list]        
-        sql_list = []
-        for h in href_list:
-            sql_list += [u'SELECT {id} FROM {t_l} WHERE {href} = {h};'.format(id=xt.ID, t_l=xt.tbl_link, href=xt.XLINK_HREF.replace(':','_'), h=h)]
-        _,lnk_id_list = self.execute_sql(sql_list)
+        lnk_id_list = [self.link_id_dict[hr] for hr in href_list] 
 
         sql_script_list = []
-        for li in lnk_id_list:
+        for lnk_id in lnk_id_list:
             sql_script = u'''INSERT INTO {t_a_l} ({aid}, {lid}, {pop}) VALUES ({vaid}, {vlid}, {vpop})
                             ON DUPLICATE KEY UPDATE {pop} = {pop}+{vpop};'''\
                                             .format(t_a_l=xt.tbl_article_link,
                                             aid=xt.ARTICLE_ID, vaid=article_id,
-                                            lid=xt.LINK_ID, vlid=li[0][0],
+                                            lid=xt.LINK_ID, vlid=lnk_id,
                                             pop=xt.POPULARITY, vpop=popularity)
             sql_script_list += [sql_script]
         return self.execute_sql(sql_script_list)
 
     def insert_article_image(self, article_id, popularity, img_attrib_value_list):
-        src_list = [img[xt.SRC] for img in img_attrib_value_list]        
-        sql_list = []
-        for s in src_list:
-            sql_list += [u'SELECT {id} FROM {t_i} WHERE {src} = {s};'.format(id=xt.ID, t_i=xt.tbl_image, src=xt.SRC, s=s)]
-        _,img_id_list = self.execute_sql(sql_list)
+        src_list = [img[xt.SRC] for img in img_attrib_value_list]
+        img_id_list = [self.image_id_dict[sr] for sr in src_list]
 
         sql_script_list = []
-        for ii in img_id_list:
+        for img_id in img_id_list:
             sql_script = u'''INSERT INTO {t_a_i} ({aid}, {iid}, {pop}) VALUES ({vaid}, {viid}, {vpop})
                             ON DUPLICATE KEY UPDATE {pop} = {pop}+{vpop};'''\
                                             .format(t_a_i=xt.tbl_article_image,
                                             aid=xt.ARTICLE_ID, vaid=article_id,
-                                            iid=xt.IMAGE_ID, viid=ii[0][0],
+                                            iid=xt.IMAGE_ID, viid=img_id,
                                             pop=xt.POPULARITY, vpop=popularity)
             sql_script_list += [sql_script]
         return self.execute_sql(sql_script_list)
@@ -136,9 +160,9 @@ class DatabaseAdaptor(object):
         sql_list = []
         sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{ttl} TEXT,{txt} MEDIUMTEXT,{pop} INTEGER) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
                                         .format(t=xt.tbl_article, id=xt.ID, txt=xt.TEXT, pop=xt.POPULARITY, ttl=xt.TITLE)]
-        sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{xref} VARCHAR(255) NOT NULL UNIQUE,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
+        sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{xref} VARCHAR(255) NOT NULL UNIQUE,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
                                         .format(t=xt.tbl_link, id=xt.ID, xref=xt.XLINK_HREF.replace(':','_'), pop=xt.POPULARITY)]
-        sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{src} VARCHAR(255) NOT NULL UNIQUE,{cap} TEXT,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
+        sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{src} VARCHAR(255) NOT NULL UNIQUE,{cap} TEXT,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
                                         .format(t=xt.tbl_image, id=xt.ID, src=xt.SRC, cap=xt.CAPTION, pop=xt.POPULARITY)]
         sql_list += [u'''CREATE TABLE {t_a_l} ({aid} INT NOT NULL, {lid} INT NOT NULL, {pop} INT,
                                         PRIMARY KEY ({aid}, {lid}),
