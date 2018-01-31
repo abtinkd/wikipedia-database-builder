@@ -15,7 +15,7 @@ class DatabaseAdaptor(object):
                          passwd=password,
                          db=db_name,
                          unix_socket = socket,
-                         charset='utf8')                                
+                         charset='utf8')
             self.__create_tables()
             self.id_article_list = self.__get_existed_article_ids()
             self.link_id_dict = self.__get_all_links_dict()
@@ -87,7 +87,7 @@ class DatabaseAdaptor(object):
             if self.image_id_dict.has_key(img_src):
                 img_id = self.image_id_dict[img_src]
             else:
-                img_id = len(self.image_id_dict)
+                img_id = len(self.image_id_dict)+1
                 self.image_id_dict[img_src] = img_id
             sql_script = u'''INSERT INTO {tbl} ({id}, {src}, {cap}, {pop}) VALUES ({id_v}, {src_v}, {cap_v}, {pop_v})
                             ON DUPLICATE KEY UPDATE {pop} = {pop}+{pop_v};'''\
@@ -106,7 +106,7 @@ class DatabaseAdaptor(object):
             if self.link_id_dict.has_key(lnk_xref):
                 lnk_id = self.link_id_dict[lnk_xref]
             else:
-                lnk_id = len(self.link_id_dict)
+                lnk_id = len(self.link_id_dict)+1
                 self.link_id_dict[lnk_xref] = lnk_id
             sql_script = u'''INSERT INTO {tbl} ({id}, {xlk}, {pop}) VALUES ({id_v}, {xlk_v}, {pop_v})
                             ON DUPLICATE KEY UPDATE {pop} = {pop}+{pop_v};'''\
