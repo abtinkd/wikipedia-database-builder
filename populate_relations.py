@@ -84,7 +84,7 @@ def get_article_id_from_file_name(filename):
 
 def populate_db_wiki13_article(artic_id, artic_text):    
     artic_text = convert_to_sql_text(artic_text)     
-    artic_title = TITLES_DICT[artic_id]
+    artic_title = convert_to_sql_text(TITLES_DICT[artic_id])
     artic_popularity = POPULARITIES_DICT[artic_id]
     db.insert_articles([{xt.ID:artic_id, xt.TEXT:artic_text, xt.POPULARITY:artic_popularity, xt.TITLE:artic_title}])
     return
