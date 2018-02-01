@@ -121,14 +121,15 @@ def parse_direcotry(db, rootname):
             try:                
                 # soup = BeautifulSoup(filestr, 'lxml')
                 # populate_db(db, soup)
-                populate_db_wiki13_article(aid, filestr)
+                
                 count[1] +=1
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
                 bad_files += [abs_filename]
                 with open('failure_log.txt','a') as f:
                     f.write(abs_filename+'\n')
-                # raise e                                          
+                # raise e
+            populate_db_wiki13_article(aid, filestr)
     bd_str = '\n'.join(bad_files)
     print ('\nunsuccessful tries:\n{}'.format(bd_str))    
 
