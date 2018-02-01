@@ -117,7 +117,7 @@ def parse_direcotry(db, rootname):
 
             filestr = ''
             with open(xmlfilename, 'r') as fr:
-                filestr = fr.read()
+                filestr = unicode(fr.read())
             try:                
                 # soup = BeautifulSoup(filestr, 'lxml')
                 # populate_db(db, soup)
