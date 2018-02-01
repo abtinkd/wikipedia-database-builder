@@ -3,7 +3,7 @@ from collections import defaultdict
 from bs4 import BeautifulSoup
 from xml_tags import Tags as xt
 
-POPULARITY_FILENAME, POPULARITIES_DICT = 'wiki09_count09_xml.csv', {}
+POPULARITY_FILENAME, WIKI13_CSV_FILENAME, POPULARITIES_DICT, TITLES_DICT = 'wiki09_count09_xml.csv', 'wiki13_counts13_title.csv', {}, {}
 
 
 
@@ -82,6 +82,17 @@ def get_article_id_from_file_name(filename):
     else:
         return -1
 
+def populate_db_wiki13_article(filename, artic_text):
+    artic_id = get_article_id_from_file_name(filename)
+    if artic_id == None or artic_id == '':
+        return
+
+    artic_text = convert_to_sql_text(artic_text)     
+    artic_title = TITLES_DICT[artic_id]
+    artic_popularity = POPULARITIES_DICT[artic_id]
+    db.insert_articles([{xt.ID:artic_id, xt.TEXT:artic_text, xt.POPULARITY:artic_popularity, xt.TITLE:artic_title}])
+    return
+
 
 import os
 import time
@@ -112,8 +123,9 @@ def parse_direcotry(db, rootname):
             with open(xmlfilename, 'r') as f:                
                 filestr = f.read()
             try:                
-                soup = BeautifulSoup(filestr, 'lxml')
-                populate_db(db, soup)
+                # soup = BeautifulSoup(filestr, 'lxml')
+                # populate_db(db, soup)
+                populate_db_wiki13_article(f, filestr)
                 count[1] +=1
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
@@ -134,6 +146,21 @@ def get_popularities(filename):
             art_id = l.rsplit('/',1)[1].split('.')[0]
             pop_dict[art_id.strip()] = int(pop.strip())
     return pop_dict
+
+def get_popularities_title_from_csv(filename):
+    print ('Reading csv for popularities and title from {}...'.format(filename))
+    pop_dict = defaultdict(int)
+    title_dict = defaultdict(str)
+    count = 0
+    with open(filename, 'r') as fr:
+        for l in fr:            
+            lparts = l.split(',')
+            artic_id = get_article_id_from_file_name(lparts[0].rsplit('/',1)[1].strip())
+            artic_popularity = int(lparts[1].strip())
+            artic_title = lparts[2].strip()
+            pop_dict[artic_id] = artic_popularity
+            title_dict[artic_id] = artic_title
+    return pop_dict, title_dict
 
 from db_adaptor import DatabaseAdaptor
 import sys
@@ -170,5 +197,6 @@ if __name__ == '__main__':
         creditentials['socket'] = socket
 
     db = DatabaseAdaptor(**creditentials)    
-    POPULARITIES_DICT = get_popularities(POPULARITY_FILENAME)
+    # POPULARITIES_DICT = get_popularities(POPULARITY_FILENAME)
+    POPULARITIES_DICT, TITLES_DICT = get_popularities_title_from_csv(WIKI13_CSV_FILENAME)
     parse_direcotry(db, rootname)
