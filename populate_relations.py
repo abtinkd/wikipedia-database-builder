@@ -82,11 +82,7 @@ def get_article_id_from_file_name(filename):
     else:
         return -1
 
-def populate_db_wiki13_article(filename, artic_text):
-    artic_id = get_article_id_from_file_name(filename)
-    if artic_id == None or artic_id == '':
-        return
-
+def populate_db_wiki13_article(artic_id, artic_text):    
     artic_text = convert_to_sql_text(artic_text)     
     artic_title = TITLES_DICT[artic_id]
     artic_popularity = POPULARITIES_DICT[artic_id]
@@ -120,12 +116,12 @@ def parse_direcotry(db, rootname):
                 continue                        
 
             filestr = ''
-            with open(xmlfilename, 'r') as f:                
-                filestr = f.read()
+            with open(xmlfilename, 'r') as fr:
+                filestr = fr.read()
             try:                
                 # soup = BeautifulSoup(filestr, 'lxml')
                 # populate_db(db, soup)
-                populate_db_wiki13_article(f, filestr)
+                populate_db_wiki13_article(aid, filestr)
                 count[1] +=1
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
