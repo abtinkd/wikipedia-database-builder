@@ -117,19 +117,18 @@ def parse_direcotry(db, rootname):
 
             filestr = ''
             with open(xmlfilename, 'r') as fr:
-                filestr = unicode(fr.read())
+                filestr = fr.read().decode('utf-8')
             try:                
                 # soup = BeautifulSoup(filestr, 'lxml')
                 # populate_db(db, soup)
-                
+                populate_db_wiki13_article(aid, filestr)
                 count[1] +=1
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
                 bad_files += [abs_filename]
                 with open('failure_log.txt','a') as f:
                     f.write(abs_filename+'\n')
-                # raise e
-            populate_db_wiki13_article(aid, filestr)
+                # raise e            
     bd_str = '\n'.join(bad_files)
     print ('\nunsuccessful tries:\n{}'.format(bd_str))    
 
@@ -147,8 +146,7 @@ def get_popularities(filename):
 def get_popularities_title_from_csv(filename):
     print ('Reading csv for popularities and title from {}...'.format(filename))
     pop_dict = defaultdict(int)
-    title_dict = defaultdict(str)
-    count = 0
+    title_dict = defaultdict(str)    
     with open(filename, 'r') as fr:
         for l in fr:            
             lparts = l.split(',')
