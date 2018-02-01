@@ -134,22 +134,22 @@ class DatabaseAdaptor(object):
             return
 
         sql_list = []
-        sql_list += [u'''CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{ttl} TEXT,{txt} MEDIUMTEXT,{pop} INTEGER) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        sql_list += [u'''CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{ttl} TEXT,{txt} MEDIUMTEXT,{pop} INTEGER) CHARACTER SET utf8 COLLATE utf8_bin;
                                         \n'''.format(t=xt.tbl_article, id=xt.ID, txt=xt.TEXT, pop=xt.POPULARITY, ttl=xt.TITLE)]
-        sql_list += [u'''CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{xref} VARCHAR(255) NOT NULL UNIQUE,{pop} INT) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        sql_list += [u'''CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{xref} VARCHAR(255) NOT NULL UNIQUE,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;
                                         \n'''.format(t=xt.tbl_link, id=xt.ID, xref=xt.XLINK_HREF.replace(':','_'), pop=xt.POPULARITY)]
-        sql_list += [u'''CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{src} VARCHAR(255) NOT NULL UNIQUE,{cap} TEXT,{pop} INT) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        sql_list += [u'''CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{src} VARCHAR(255) NOT NULL UNIQUE,{cap} TEXT,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;
                                         \n'''.format(t=xt.tbl_image, id=xt.ID, src=xt.SRC, cap=xt.CAPTION, pop=xt.POPULARITY)]
         sql_list += [u'''CREATE TABLE {t_a_l} ({aid} INT NOT NULL, {lid} INT NOT NULL, {pop} INT,
                                         PRIMARY KEY ({aid}, {lid}),
                                         FOREIGN KEY ({aid}) REFERENCES {t_a} ({id}) ON DELETE RESTRICT ON UPDATE CASCADE,
-                                        FOREIGN KEY ({lid}) REFERENCES {t_l} ({id}) ON DELETE RESTRICT ON UPDATE CASCADE) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                                        FOREIGN KEY ({lid}) REFERENCES {t_l} ({id}) ON DELETE RESTRICT ON UPDATE CASCADE) CHARACTER SET utf8 COLLATE utf8_bin;
                                         \n'''.format(t_a_l=xt.tbl_article_link, aid=xt.ARTICLE_ID, lid=xt.LINK_ID,
                                                     pop=xt.POPULARITY, t_a=xt.tbl_article, t_l=xt.tbl_link, id=xt.ID)]
         sql_list += [u'''CREATE TABLE {t_a_i} ({aid} INT NOT NULL, {iid} INT NOT NULL, {pop} INT,
                                         PRIMARY KEY ({aid}, {iid}),
                                         FOREIGN KEY ({aid}) REFERENCES {t_a} ({id}) ON DELETE RESTRICT ON UPDATE CASCADE,
-                                        FOREIGN KEY ({iid}) REFERENCES {t_i} ({id}) ON DELETE RESTRICT ON UPDATE CASCADE) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                                        FOREIGN KEY ({iid}) REFERENCES {t_i} ({id}) ON DELETE RESTRICT ON UPDATE CASCADE) CHARACTER SET utf8 COLLATE utf8_bin;
                                         \n'''.format(pop=xt.POPULARITY, id=xt.ID, t_a_i=xt.tbl_article_image, aid=xt.ARTICLE_ID,
                                                     iid=xt.IMAGE_ID, t_i=xt.tbl_image, t_a=xt.tbl_article)]        
         
