@@ -2,10 +2,17 @@ from __future__ import print_function
 from collections import defaultdict
 from bs4 import BeautifulSoup
 from xml_tags import Tags as xt
+import codecs
 
 POPULARITY_FILENAME, WIKI13_CSV_FILENAME, POPULARITIES_DICT, TITLES_DICT = 'wiki09_count09_xml.csv', 'wiki13_counts13_title.csv', {}, {}
 
-
+def read_file(filepath, return_repr=False):
+    with codecs.open(filepath, 'r', encoding='utf-8') as fp:
+        ustr = fp.read()
+        if return_repr:
+            return repr(ustr)
+        else:
+            return ustr
 
 def convert_to_sql_text (txt, truncate_size = -1): 
     if txt == None or txt == '':
@@ -15,7 +22,7 @@ def convert_to_sql_text (txt, truncate_size = -1):
         txt = txt[:truncate_size-2]
     if txt[-1] == '\\':
         txt = txt[:-1]+'/'
-    return u'\'' + txt + '\''    
+    return '\'' + txt + '\''
 
 def extract_images(soup, popularity):    
     images = []
@@ -82,7 +89,10 @@ def get_article_id_from_file_name(filename):
     else:
         return -1
 
-def populate_db_wiki13_article(artic_id, artic_text):    
+def populate_db_wiki13_article(artic_id, artic_text):
+    if artic_id == -1:
+        return
+
     artic_text = convert_to_sql_text(artic_text)     
     artic_title = convert_to_sql_text(TITLES_DICT[artic_id])
     artic_popularity = POPULARITIES_DICT[artic_id]
@@ -115,9 +125,7 @@ def parse_direcotry(db, rootname):
             if aid in im_ids:
                 continue                        
 
-            filestr = ''
-            with open(xmlfilename, 'r') as fr:
-                filestr = fr.read().decode('utf-8')
+            filestr = read_file(xmlfilename)            
             try:                
                 # soup = BeautifulSoup(filestr, 'lxml')
                 # populate_db(db, soup)
@@ -135,9 +143,8 @@ def parse_direcotry(db, rootname):
 def get_popularities(filename):
     print ('Reading popularities from {}...'.format(filename))
     pop_dict = defaultdict(int)
-    with open(filename, 'r') as fr:
-        for l in fr:
-            l = l.encode('utf-8')
+    with codecs.open(filename, 'r', encoding='utf-8') as fr:
+        for l in fr:            
             l,pop = l.rsplit(',',1)
             art_id = l.rsplit('/',1)[1].split('.')[0]
             pop_dict[art_id.strip()] = int(pop.strip())
@@ -147,7 +154,7 @@ def get_popularities_title_from_csv(filename):
     print ('Reading csv for popularities and title from {}...'.format(filename))
     pop_dict = defaultdict(int)
     title_dict = defaultdict(str)    
-    with open(filename, 'r') as fr:
+    with codecs.open(filename, 'r', encoding='utf-8') as fr:
         for l in fr:            
             lparts = l.split(',')
             artic_id = get_article_id_from_file_name(lparts[0].rsplit('/',1)[1].strip())
