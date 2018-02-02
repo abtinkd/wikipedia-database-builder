@@ -134,7 +134,7 @@ def parse_direcotry(db, rootname):
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
                 bad_files += [abs_filename]
-                with open('failure_log.txt','a') as f:
+                with open('failure_{}.log'.format(time.strftime('%m%d_%H%M')),'a') as f:
                     f.write(abs_filename+'\n')
                 # raise e            
     bd_str = '\n'.join(bad_files)
