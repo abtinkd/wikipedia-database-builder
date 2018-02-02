@@ -16,6 +16,7 @@ class DatabaseAdaptor(object):
                          db=db_name,
                          unix_socket = socket,
                          charset='utf8')            
+            self.__drop_all_tables()
             self.__create_tables()
         except Exception as e:            
             print 'Database connection failed!'
