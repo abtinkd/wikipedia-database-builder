@@ -2,7 +2,7 @@ from __future__ import print_function
 from collections import defaultdict
 from bs4 import BeautifulSoup
 from xml_tags import Tags as xt
-import codecs
+import codecs, os, time
 
 POPULARITY_FILENAME, WIKI13_CSV_FILENAME, POPULARITIES_DICT, TITLES_DICT = 'wiki09_count09_xml.csv', 'wiki13_counts13_title.csv', {}, {}
 ERROR_LOG_FILENAME = 'failure_{}.log'.format(time.strftime('%m%d_%H%M'))
@@ -101,8 +101,6 @@ def populate_db_wiki13_article(artic_id, artic_text):
     return
 
 
-import os
-import time
 def parse_direcotry(db, rootname):    
     bad_files = []
     count = [0,0]
