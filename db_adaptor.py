@@ -1,8 +1,6 @@
 import MySQLdb
 from xml_tags import Tags as xt
 
-
-
 class DatabaseAdaptor(object):
     """docstring for DatabaseAdaptor"""    
     def __init__(self, username, password, hostname,
@@ -16,6 +14,7 @@ class DatabaseAdaptor(object):
                          db=db_name,
                          unix_socket = socket,
                          charset='utf8')
+            
             self.__create_tables()
             self.id_article_list = self.__get_existed_article_ids()
             self.link_id_dict = self.__get_all_links_dict()

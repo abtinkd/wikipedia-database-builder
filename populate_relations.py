@@ -62,14 +62,15 @@ def extract_links(soup, popularity):
             link_set.add(web_link)
     return links
 
-def populate_db(db, soup):
-    artic_id = soup.find(xt.HEADER).find(xt.ID).get_text(strip=True)
-    if artic_id == None or artic_id == '':
-        return
+def populate_db(artic_id, db, soup):    
+    header_id = int(soup.find(xt.HEADER).find(xt.ID).get_text(strip=True))    
+    if artic_id != header_id:
+        with open('unmatched_id.log', 'a') as fp:
+            fp.write('h:{} id:{}\n'.format(header_id, artic_id))
 
-    artic_text = convert_to_sql_text(soup.get_text())
+    artic_text = convert_to_sql_text(soup.get_text())     
     artic_title = convert_to_sql_text(soup.find(xt.TITLE).get_text())
-    artic_popularity = int(POPULARITIES_DICT[artic_id])
+    artic_popularity = POPULARITIES_DICT[artic_id]
     db.insert_articles([{xt.ID:artic_id, xt.TEXT:artic_text, xt.POPULARITY:artic_popularity, xt.TITLE:artic_title}])
 
     artic_image_dict_list = extract_images(soup, artic_popularity)
@@ -101,7 +102,7 @@ def populate_db_wiki13_article(artic_id, artic_text):
 
 import os
 import time
-def parse_direcotry(db, rootname):
+def parse_direcotry(db, rootname):    
     bad_files = []
     count = [0,0]
     tm = time.time()
@@ -113,41 +114,41 @@ def parse_direcotry(db, rootname):
                 speed = (time.time()-tm)/1000.0
                 tm = time.time()
             xmlfilename = root+'/'+f
-            print ('\rfailure-rate:{:.5f}     {} | {:.5f}(s) | {}...      '.format(len(bad_files)/float(count[1]+1), count, speed,
+            print ('\rfailure-rate:{:.6f}     {} | {:.5f}(s) | {}...      '.format(len(bad_files)/float(count[1]+1), count, speed,
                 os.path.abspath(xmlfilename)), end='')
 
             aid = get_article_id_from_file_name(f)
             if aid == -1:
                 bad_files += [os.path.abspath(xmlfilename)]
                 continue
-            # if aid in db.id_article_list:
-            #     continue                        
+            if aid in db.id_article_list:
+                continue                        
 
             filestr = read_file(xmlfilename)            
             try:                
                 soup = BeautifulSoup(filestr, 'lxml')
-                populate_db(db, soup)                
+                populate_db(aid, db, soup)
                 count[1] +=1
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
                 bad_files += [abs_filename]
                 with open('failure_{}.log'.format(time.strftime('%m%d_%H%M')),'a') as f:
-                    f.write(abs_filename+'\n')
+                    f.write(abs_filename+'  '+str(e)+'\n')
                 # raise e            
     bd_str = '\n'.join(bad_files)
     print ('\nunsuccessful tries:\n{}'.format(bd_str))    
 
-def get_popularities(filename):
+def get_popularities_from_csv_09(filename):
     print ('Reading popularities from {}...'.format(filename))
     pop_dict = defaultdict(int)
     with codecs.open(filename, 'r', encoding='utf-8') as fr:
         for l in fr:            
-            l,pop = l.rsplit(',',1)
-            art_id = l.rsplit('/',1)[1].split('.')[0]
-            pop_dict[art_id.strip()] = int(pop.strip())
+            lparts = l.rsplit(',',1)
+            artic_id = get_article_id_from_file_name(lparts[0].rsplit('/',1)[1].strip())
+            pop_dict[artic_id] = int(lparts[1].strip())
     return pop_dict
 
-def get_popularities_title_from_csv(filename):
+def get_popularities_title_from_csv_13(filename):
     print ('Reading csv for popularities and title from {}...'.format(filename))
     pop_dict = defaultdict(int)
     title_dict = defaultdict(str)    
@@ -196,6 +197,6 @@ if __name__ == '__main__':
         creditentials['socket'] = socket
 
     db = DatabaseAdaptor(**creditentials)    
-    # POPULARITIES_DICT = get_popularities(POPULARITY_FILENAME)
-    POPULARITIES_DICT, TITLES_DICT = get_popularities_title_from_csv(WIKI13_CSV_FILENAME)
+    POPULARITIES_DICT = get_popularities_from_csv_09(POPULARITY_FILENAME)    
+    # POPULARITIES_DICT, TITLES_DICT = get_popularities_title_from_csv_13(WIKI13_CSV_FILENAME)
     parse_direcotry(db, rootname)
