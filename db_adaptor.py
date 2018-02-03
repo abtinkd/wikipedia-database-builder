@@ -157,12 +157,12 @@ class DatabaseAdaptor(object):
             return
 
         sql_list = []
-        sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{ttl} TEXT,{txt} MEDIUMTEXT,{pop} INTEGER) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
-                                        .format(t=xt.tbl_article, id=xt.ID, txt=xt.TEXT, pop=xt.POPULARITY, ttl=xt.TITLE)]
-        sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{xref} VARCHAR(255) NOT NULL UNIQUE,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
-                                        .format(t=xt.tbl_link, id=xt.ID, xref=xt.XLINK_HREF.replace(':','_'), pop=xt.POPULARITY)]
-        sql_list += [u'CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{src} VARCHAR(255) NOT NULL UNIQUE,{cap} TEXT,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;\n'\
-                                        .format(t=xt.tbl_image, id=xt.ID, src=xt.SRC, cap=xt.CAPTION, pop=xt.POPULARITY)]
+        sql_list += [u'''CREATE TABLE {t} ({id} INT NOT NULL PRIMARY KEY,{ttl} TEXT,{txt} MEDIUMTEXT,{pop} INTEGER) CHARACTER SET utf8 COLLATE utf8_bin;
+                                        \n'''.format(t=xt.tbl_article, id=xt.ID, txt=xt.TEXT, pop=xt.POPULARITY, ttl=xt.TITLE)]
+        sql_list += [u'''CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{xref} VARCHAR(255) NOT NULL UNIQUE,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;
+                                        \n'''.format(t=xt.tbl_link, id=xt.ID, xref=xt.XLINK_HREF.replace(':','_'), pop=xt.POPULARITY)]
+        sql_list += [u'''CREATE TABLE {t} ({id} INT NOT NULL AUTO_INCREMENT PRIMARY KEY,{src} VARCHAR(255) NOT NULL UNIQUE,{cap} TEXT,{pop} INT) CHARACTER SET utf8 COLLATE utf8_bin;
+                                        \n'''.format(t=xt.tbl_image, id=xt.ID, src=xt.SRC, cap=xt.CAPTION, pop=xt.POPULARITY)]
         sql_list += [u'''CREATE TABLE {t_a_l} ({aid} INT NOT NULL, {lid} INT NOT NULL, {pop} INT,
                                         PRIMARY KEY ({aid}, {lid}),
                                         FOREIGN KEY ({aid}) REFERENCES {t_a} ({id}) ON DELETE RESTRICT ON UPDATE CASCADE,
