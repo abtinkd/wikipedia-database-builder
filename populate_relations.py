@@ -5,6 +5,7 @@ from xml_tags import Tags as xt
 import codecs
 
 POPULARITY_FILENAME, WIKI13_CSV_FILENAME, POPULARITIES_DICT, TITLES_DICT = 'wiki09_count09_xml.csv', 'wiki13_counts13_title.csv', {}, {}
+ERROR_LOG_FILENAME = 'failure_{}.log'.format(time.strftime('%m%d_%H%M'))
 
 def read_file(filepath, return_repr=False):
     with codecs.open(filepath, 'r', encoding='utf-8') as fp:
@@ -132,7 +133,7 @@ def parse_direcotry(db, rootname):
             except Exception as e:
                 abs_filename = os.path.abspath(xmlfilename)
                 bad_files += [abs_filename]
-                with open('failure_{}.log'.format(time.strftime('%m%d_%H%M')),'a') as f:
+                with open(ERROR_LOG_FILENAME,'a') as f:
                     f.write(abs_filename+'  '+str(e)+'\n')
                 # raise e            
     bd_str = '\n'.join(bad_files)
