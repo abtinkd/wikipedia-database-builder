@@ -101,38 +101,43 @@ def populate_db_wiki13_article(artic_id, artic_text):
     return
 
 
-def parse_direcotry(db, rootname):    
+def import_file_to_db(db, filepath):
+    parts = filepath.rsplit('/',1)
+    if len(parts) == 2:
+        filename = parts[1].strip()
+    else:
+        filename = parts[0].strip()
+    aid = get_article_id_from_file_name(filename)
+    if aid == -1:
+        raise ValueError('filename not representing and id:', filename)
+    if aid in db.id_article_list:
+        return 1
+    filestr = read_file(filepath)
+    soup = BeautifulSoup(filestr, 'lxml')
+    populate_db(aid, db, soup)    
+
+def traverse_directory(rootname, process_file_func):
     bad_files = []
     count = [0,0]
     tm = time.time()
     speed = 1
-    for root, dirs, files in os.walk(rootname):
+    for root, _, files in os.walk(rootname):
         for f in files:
             count[0] += 1
+            filepath = os.path.abspath(root+'/'+f)            
             if count[0]%1000 == 0:
                 speed = (time.time()-tm)/1000.0
-                tm = time.time()
-            xmlfilename = root+'/'+f
-            print ('\rfailure-rate:{:.6f}     {} | {:.5f}(s) | {}...      '.format(len(bad_files)/float(count[1]+1), count, speed,
-                os.path.abspath(xmlfilename)), end='')
-
-            aid = get_article_id_from_file_name(f)
-            if aid == -1:
-                bad_files += [os.path.abspath(xmlfilename)]
-                continue
-            if aid in db.id_article_list:
-                continue                        
-
-            filestr = read_file(xmlfilename)            
+                tm = time.time()            
+            print('\rfailure-rate:{:.6f}     {} | {:.5f}(s) | {}...      '.format(len(bad_files)/float(count[0]), count, speed,
+                filepath, end=''))
             try:                
-                soup = BeautifulSoup(filestr, 'lxml')
-                populate_db(aid, db, soup)
-                count[1] +=1
+                failed = process_file_func(filepath)
+                if not failed:
+                    count[1] +=1
             except Exception as e:
-                abs_filename = os.path.abspath(xmlfilename)
-                bad_files += [abs_filename]
+                bad_files += [filepath]
                 with open(ERROR_LOG_FILENAME,'a') as f:
-                    f.write(abs_filename+'  '+str(e)+'\n')
+                    f.write(filepath+'  '+str(e)+'\n')
                 # raise e            
     bd_str = '\n'.join(bad_files)
     print ('\nunsuccessful tries:\n{}'.format(bd_str))    
@@ -198,4 +203,6 @@ if __name__ == '__main__':
     db = DatabaseAdaptor(**creditentials)    
     POPULARITIES_DICT = get_popularities_from_csv_09(POPULARITY_FILENAME)    
     # POPULARITIES_DICT, TITLES_DICT = get_popularities_title_from_csv_13(WIKI13_CSV_FILENAME)
-    parse_direcotry(db, rootname)
+
+    from functools import partial    
+    traverse_directory(rootname, partial(import_file_to_db, db))
