@@ -6,7 +6,7 @@ from functools import partial
 DEBUG_LOG_FILENAME = 'prepage_contents_{}.log'.format(time.strftime('%m%d_%H%M'))
 prog_id = re.compile(r'<id>(.*)</id>', re.UNICODE | re.IGNORECASE)
 prog_title = re.compile(r'<title>(.*)</title>', re.UNICODE | re.IGNORECASE)
-prog_prepage = re.compile(r'.*[^\s]+.*<page>', re.UNICODE | re.IGNORECASE | re.DOTALL)
+prog_prepage = re.compile(r'^\s*[\S]+.*<page>', re.UNICODE | re.IGNORECASE | re.DOTALL)
 
 
 def extract_placeholders(dict, filepath):
@@ -29,10 +29,13 @@ def extract_placeholders(dict, filepath):
 
 def extract_pages(filepath, output_path):
     path = filepath.rsplit('/',1)[0]
-    with open(filepath, 'r', encoding="utf-8") as f:
+    stime = time.time()
+    with open(filepath, 'r', encoding="utf-8") as fpoint:
         page = ''
         page_count = 0
-        for l in f:
+        line_count = 0
+        for l in fpoint:
+            line_count +=1
             page += l
             if l.find(u'</page>') != -1:
                 id = prog_id.search(page).group(1).strip()
@@ -43,12 +46,15 @@ def extract_pages(filepath, output_path):
                     fo.write('{},{}\n'.format(id,title))
 
                 prepage = prog_prepage.match(page)
-                if prepage != None:
-                    with open(path+'/'+DEBUG_LOG_FILENAME, 'a') as f:
+                if prepage is not None:
+                    with open(path+'/'+DEBUG_LOG_FILENAME, 'a', encoding="utf-8") as f:
                         f.write(id + ' -> ' + prepage.group() + '\n')
 
                 page_count += page.count(u'<page>')
                 page = ''
+                if page_count%100 == 0:
+                    print('{} lines   {} pages   {:.0f} minutes'.format(line_count, page_count, (time.time()-stime)/60))
+
         with open(DEBUG_LOG_FILENAME, 'a') as f:
             f.write(page_count + '\n')
 
