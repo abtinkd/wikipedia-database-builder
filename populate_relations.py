@@ -2,10 +2,18 @@ from __future__ import print_function
 from collections import defaultdict
 from bs4 import BeautifulSoup
 from xml_tags import Tags as xt
+import codecs, os, time
 
-POPULARITY_FILENAME, POPULARITIES_DICT = 'wiki09_count09_xml.csv', {}
+POPULARITY_FILENAME, WIKI13_CSV_FILENAME, POPULARITIES_DICT, TITLES_DICT = 'wiki09_count09_xml.csv', 'wiki13_counts13_title.csv', {}, {}
+ERROR_LOG_FILENAME = 'failure_{}.log'.format(time.strftime('%m%d_%H%M'))
 
-
+def read_file(filepath, return_repr=False):
+    with codecs.open(filepath, 'r', encoding='utf-8') as fp:
+        ustr = fp.read()
+        if return_repr:
+            return repr(ustr)
+        else:
+            return ustr
 
 def convert_to_sql_text (txt, truncate_size = -1): 
     if txt == None or txt == '':
@@ -15,7 +23,7 @@ def convert_to_sql_text (txt, truncate_size = -1):
         txt = txt[:truncate_size-2]
     if txt[-1] == '\\':
         txt = txt[:-1]+'/'
-    return u'\'' + txt + '\''    
+    return '\'' + txt + '\''
 
 def extract_images(soup, popularity):    
     images = []
@@ -55,14 +63,15 @@ def extract_links(soup, popularity):
             link_set.add(web_link)
     return links
 
-def populate_db(db, soup):
-    artic_id = soup.find(xt.HEADER).find(xt.ID).get_text(strip=True)
-    if artic_id == None or artic_id == '':
-        return
+def populate_db(artic_id, db, soup):    
+    header_id = int(soup.find(xt.HEADER).find(xt.ID).get_text(strip=True))    
+    if artic_id != header_id:
+        with open('unmatched_id.log', 'a') as fp:
+            fp.write('h:{} id:{}\n'.format(header_id, artic_id))
 
     artic_text = convert_to_sql_text(soup.get_text())     
     artic_title = convert_to_sql_text(soup.find(xt.TITLE).get_text())
-    artic_popularity = int(POPULARITIES_DICT[artic_id])
+    artic_popularity = POPULARITIES_DICT[artic_id]
     db.insert_articles([{xt.ID:artic_id, xt.TEXT:artic_text, xt.POPULARITY:artic_popularity, xt.TITLE:artic_title}])
 
     artic_image_dict_list = extract_images(soup, artic_popularity)
@@ -74,66 +83,88 @@ def populate_db(db, soup):
     db.insert_article_link(artic_id, artic_popularity, artic_links_dict_list)
 
 import re
-def get_article_id_from_file_name(filename):
-    # print(filename, re.sub('[^0-9]', '', filename))
+def get_article_id_from_file_name(filename):    
     n = re.sub('[^0-9]', '', filename)
     if n != '' and n != None:
         return int(n)
     else:
         return -1
 
+def populate_db_wiki13_article(artic_id, artic_text):
+    if artic_id == -1:
+        return
 
-import os
-import time
-def parse_direcotry(db, rootname):
-    im_ids = db.get_imported_article_ids()
+    artic_text = convert_to_sql_text(artic_text)     
+    artic_title = convert_to_sql_text(TITLES_DICT[artic_id])
+    artic_popularity = POPULARITIES_DICT[artic_id]
+    db.insert_articles([{xt.ID:artic_id, xt.TEXT:artic_text, xt.POPULARITY:artic_popularity, xt.TITLE:artic_title}])
+    return
+
+
+def import_file_to_db(db, filepath):
+    parts = filepath.rsplit('/',1)
+    if len(parts) == 2:
+        filename = parts[1].strip()
+    else:
+        filename = parts[0].strip()
+    aid = get_article_id_from_file_name(filename)
+    if aid == -1:
+        raise ValueError('filename not representing and id:', filename)
+    if aid in db.id_article_list:
+        return 1
+    filestr = read_file(filepath)
+    soup = BeautifulSoup(filestr, 'lxml')
+    populate_db(aid, db, soup)    
+
+def traverse_directory(rootname, process_file_func):
     bad_files = []
     count = [0,0]
     tm = time.time()
     speed = 1
-    for root, dirs, files in os.walk(rootname):
+    for root, _, files in os.walk(rootname):
         for f in files:
             count[0] += 1
+            filepath = os.path.abspath(root+'/'+f)            
             if count[0]%1000 == 0:
                 speed = (time.time()-tm)/1000.0
-                tm = time.time()
-            xmlfilename = root+'/'+f
-            print ('\rfailure-rate:{:.5f}     {} | {:.5f}(s) | {}...      '.format(len(bad_files)/float(count[1]+1), count, speed,
-                os.path.abspath(xmlfilename)), end='')
-
-            aid = get_article_id_from_file_name(f)
-            if aid == -1:
-                bad_files += [os.path.abspath(xmlfilename)]
-                continue
-            if aid in im_ids:
-                continue                        
-
-            filestr = ''
-            with open(xmlfilename, 'r') as f:                
-                filestr = f.read()
+                tm = time.time()            
+            print('\rfailure-rate:{:.6f}     {} | {:.5f}(s) | {}...      '.format(len(bad_files)/float(count[0]), count, speed,
+                filepath, end=''))
             try:                
-                soup = BeautifulSoup(filestr, 'lxml')
-                populate_db(db, soup)
-                count[1] +=1
+                failed = process_file_func(filepath)
+                if not failed:
+                    count[1] +=1
             except Exception as e:
-                abs_filename = os.path.abspath(xmlfilename)
-                bad_files += [abs_filename]
-                with open('failure_log.txt','a') as f:
-                    f.write(abs_filename+'\n')
-                # raise e                                          
+                bad_files += [filepath]
+                with open(ERROR_LOG_FILENAME,'a') as f:
+                    f.write(filepath+'  '+str(e)+'\n')
+                # raise e            
     bd_str = '\n'.join(bad_files)
     print ('\nunsuccessful tries:\n{}'.format(bd_str))    
 
-def get_popularities(filename):
+def get_popularities_from_csv_09(filename):
     print ('Reading popularities from {}...'.format(filename))
     pop_dict = defaultdict(int)
-    with open(filename, 'r') as fr:
-        for l in fr:
-            l = l.encode('utf-8')
-            l,pop = l.rsplit(',',1)
-            art_id = l.rsplit('/',1)[1].split('.')[0]
-            pop_dict[art_id.strip()] = int(pop.strip())
+    with codecs.open(filename, 'r', encoding='utf-8') as fr:
+        for l in fr:            
+            lparts = l.rsplit(',',1)
+            artic_id = get_article_id_from_file_name(lparts[0].rsplit('/',1)[1].strip())
+            pop_dict[artic_id] = int(lparts[1].strip())
     return pop_dict
+
+def get_popularities_title_from_csv_13(filename):
+    print ('Reading csv for popularities and title from {}...'.format(filename))
+    pop_dict = defaultdict(int)
+    title_dict = defaultdict(str)    
+    with codecs.open(filename, 'r', encoding='utf-8') as fr:
+        for l in fr:            
+            lparts = l.split(',')
+            artic_id = get_article_id_from_file_name(lparts[0].rsplit('/',1)[1].strip())
+            artic_popularity = int(lparts[1].strip())
+            artic_title = lparts[2].strip()
+            pop_dict[artic_id] = artic_popularity
+            title_dict[artic_id] = artic_title
+    return pop_dict, title_dict
 
 from db_adaptor import DatabaseAdaptor
 import sys
@@ -170,5 +201,8 @@ if __name__ == '__main__':
         creditentials['socket'] = socket
 
     db = DatabaseAdaptor(**creditentials)    
-    POPULARITIES_DICT = get_popularities(POPULARITY_FILENAME)
-    parse_direcotry(db, rootname)
+    POPULARITIES_DICT = get_popularities_from_csv_09(POPULARITY_FILENAME)    
+    # POPULARITIES_DICT, TITLES_DICT = get_popularities_title_from_csv_13(WIKI13_CSV_FILENAME)
+
+    from functools import partial    
+    traverse_directory(rootname, partial(import_file_to_db, db))
